@@ -8,8 +8,7 @@ import {
   AlertTriangle,
   IndianRupee,
   Plus,
-  FileText,
-  TrendUp
+  FileText
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -17,6 +16,22 @@ import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useMemo } from "react";
+import { motion, Variants } from "framer-motion";
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 export default function Dashboard() {
   useShortcuts();
@@ -50,143 +65,143 @@ export default function Dashboard() {
   }, [invoices, products]);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-white">Dashboard</h2>
-          <p className="text-zinc-500">Welcome to SoloLedger. Here&apos;s your business at a glance.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-primary">Dashboard</h2>
+          <p className="text-muted-foreground">Welcome back. Here&apos;s your business at a glance.</p>
         </div>
         <div className="flex items-center gap-4">
           <Link href="/billing">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button size="lg" className="shadow-primary/20 shadow-xl">
+              <Plus className="w-5 h-5 mr-2" />
               New Invoice
             </Button>
           </Link>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-zinc-950 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-400">Today&apos;s Sales</CardTitle>
-            <IndianRupee className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">₹{stats?.todaySales.toFixed(2) || '0.00'}</div>
-            <p className="text-xs text-zinc-500 mt-1">Gross sales for today</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-zinc-950 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-400">Stock Value</CardTitle>
-            <Package className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">₹{stats?.stockValue.toFixed(2) || '0.00'}</div>
-            <p className="text-xs text-zinc-500 mt-1">Total inventory valuation</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-zinc-950 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-400">Unpaid Bills</CardTitle>
-            <Receipt className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.unpaidBills || 0}</div>
-            <p className="text-xs text-zinc-500 mt-1">Invoices awaiting payment</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-zinc-950 border-zinc-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-400">Low Stock Items</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.lowStockCount || 0}</div>
-            {stats?.lowStockCount && stats.lowStockCount > 0 ? (
-              <Badge variant="destructive" className="mt-1">Action required</Badge>
-            ) : (
-              <p className="text-xs text-emerald-500 mt-1">All levels healthy</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="lg:col-span-4 bg-zinc-950 border-zinc-800">
-          <CardHeader>
-            <CardTitle className="text-white">Recent Invoices</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {!stats?.recentInvoices || stats.recentInvoices.length === 0 ? (
-                <div className="flex h-[200px] items-center justify-center text-zinc-500 italic">
-                  No recent invoices found.
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {[
+          { title: "Today's Sales", icon: IndianRupee, value: `₹${stats?.todaySales.toFixed(2) || '0.00'}`, desc: "Gross sales for today", color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { title: "Stock Value", icon: Package, value: `₹${stats?.stockValue.toFixed(2) || '0.00'}`, desc: "Total inventory valuation", color: "text-blue-500", bg: "bg-blue-500/10" },
+          { title: "Unpaid Bills", icon: Receipt, value: stats?.unpaidBills || 0, desc: "Invoices awaiting payment", color: "text-orange-500", bg: "bg-orange-500/10" },
+          { title: "Low Stock Items", icon: AlertTriangle, value: stats?.lowStockCount || 0, desc: "Action required", color: "text-red-500", bg: "bg-red-500/10" }
+        ].map((stat, i) => (
+          <motion.div variants={itemVariants} key={i}>
+            <Card className="hover:scale-[1.02] transition-transform duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+                <div className={`p-2 rounded-xl ${stat.bg}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
-              ) : (
-                stats.recentInvoices.map((inv) => (
-                  <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-900 border border-zinc-800">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-zinc-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">{inv.customerName}</p>
-                        <p className="text-xs text-zinc-500">{inv.invoiceNumber} • {new Date(inv.date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-blue-400">₹{inv.totalAmount.toFixed(2)}</p>
-                      <Badge variant="outline" className="text-[10px] h-4 px-1 border-zinc-800 text-zinc-500">{inv.status}</Badge>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            {stats?.recentInvoices && stats.recentInvoices.length > 0 && (
-              <Link href="/sales" className="block text-center text-xs text-zinc-500 mt-4 hover:text-white transition-colors">
-                View All Sales History →
-              </Link>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3 bg-zinc-950 border-zinc-800">
-          <CardHeader>
-            <CardTitle className="text-white">Low Stock Alerts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {!stats?.lowStockItems || stats.lowStockItems.length === 0 ? (
-                <div className="flex h-[200px] items-center justify-center text-zinc-500 italic text-center">
-                  All inventory levels are healthy. Good job!
-                </div>
-              ) : (
-                stats.lowStockItems.map((prod) => (
-                  <div key={prod.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-900 border border-zinc-800 border-l-2 border-l-red-500">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-red-500/10 flex items-center justify-center">
-                        <Package className="w-4 h-4 text-red-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">{prod.name}</p>
-                        <p className="text-xs text-zinc-500">SKU: {prod.sku}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-red-500">{prod.currentStock} {prod.unit}</p>
-                      <Link href="/inventory">
-                        <Button variant="link" size="sm" className="h-4 p-0 text-[10px] text-zinc-500 hover:text-white">Restock</Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                <p className="text-xs text-muted-foreground mt-1">{stat.desc}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
-    </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+        <motion.div variants={itemVariants} className="lg:col-span-4">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Recent Invoices</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {!stats?.recentInvoices || stats.recentInvoices.length === 0 ? (
+                  <div className="flex h-[200px] items-center justify-center text-muted-foreground italic">
+                    No recent invoices found.
+                  </div>
+                ) : (
+                  stats.recentInvoices.map((inv, i) => (
+                    <motion.div 
+                      key={inv.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + (i * 0.1) }}
+                      className="flex items-center justify-between p-4 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors border border-border/50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <FileText className="size-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{inv.customerName}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{inv.invoiceNumber} • {new Date(inv.date).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-primary">₹{inv.totalAmount.toFixed(2)}</p>
+                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-border text-muted-foreground">{inv.status}</Badge>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+              {stats?.recentInvoices && stats.recentInvoices.length > 0 && (
+                <Link href="/sales" className="block text-center text-xs text-muted-foreground mt-6 hover:text-primary transition-colors">
+                  View All Sales History →
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="lg:col-span-3">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Low Stock Alerts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {!stats?.lowStockItems || stats.lowStockItems.length === 0 ? (
+                  <div className="flex h-[200px] items-center justify-center text-muted-foreground italic text-center">
+                    All inventory levels are healthy.
+                    <br />
+                    Good job!
+                  </div>
+                ) : (
+                  stats.lowStockItems.map((prod, i) => (
+                    <motion.div 
+                      key={prod.id}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + (i * 0.1) }}
+                      className="flex items-center justify-between p-4 rounded-2xl bg-destructive/5 hover:bg-destructive/10 transition-colors border border-destructive/20"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="size-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                          <Package className="size-5 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{prod.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">SKU: {prod.sku}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-destructive">{prod.currentStock} {prod.unit}</p>
+                        <Link href="/inventory">
+                          <Button variant="link" size="sm" className="h-6 p-0 text-xs text-muted-foreground hover:text-primary">Restock</Button>
+                        </Link>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </motion.div>
   );
 }
