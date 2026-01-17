@@ -1,7 +1,7 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import {db, Invoice, InvoiceItem } from '@/lib/db';
+import { db, Invoice, InvoiceItem } from '@/lib/db';
 import {
     Table,
     TableBody,
@@ -38,10 +38,10 @@ export default function SalesPage() {
 
     const stats = useMemo(() => {
         if (!invoices) return { total: 0, revenue: 0, today: 0 };
-        
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         return {
             total: invoices.length,
             revenue: invoices.reduce((sum, inv) => sum + inv.totalAmount, 0),
@@ -91,7 +91,7 @@ export default function SalesPage() {
             {/* Print Container */}
             <div className="print-container">
                 <div ref={printRef}>
-                    {printInvoiceData && profile && (
+                    {printInvoiceData && (
                         <InvoicePrint
                             invoice={printInvoiceData.invoice}
                             items={printInvoiceData.items}
