@@ -14,11 +14,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Save, ShoppingCart, Plus, Minus, Search } from 'lucide-react';
+import { Trash2, Save, ShoppingCart, Plus, Minus, Search, Printer, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useShortcuts } from '@/hooks/use-shortcuts';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useAppContext } from '@/context/AppContext';
+import { InvoicePrint } from '@/components/InvoicePrint';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface BillingItem {
     productId: number;
@@ -30,10 +33,16 @@ interface BillingItem {
 export default function BillingPage() {
     useShortcuts();
     const router = useRouter();
+    const { profile } = useAppContext();
     const [customerName, setCustomerName] = useState('Walk-in Customer');
     const [items, setItems] = useState<BillingItem[]>([]);
     const [productSearch, setProductSearch] = useState('');
     const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+
+    // States for print flow
+    const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+    const [completedInvoice, setCompletedInvoice] = useState<Invoice | null>(null);
+    const [completedItems, setCompletedItems] = useState<InvoiceItem[]>([]);
 
     const products = useLiveQuery(
         () => db.products.filter(p =>
@@ -90,7 +99,7 @@ export default function BillingPage() {
         try {
             await db.transaction('rw', db.invoices, db.invoiceItems, db.products, async () => {
                 const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-                const invoiceId = await db.invoices.add({
+                const invoiceData: Invoice = {
                     invoiceNumber,
                     date: new Date(),
                     customerName,
@@ -98,16 +107,22 @@ export default function BillingPage() {
                     taxAmount: totals.tax,
                     discountAmount: 0,
                     status: 'Paid'
-                });
+                };
+                const invoiceId = await db.invoices.add(invoiceData);
+
+                const finalInvoice = { ...invoiceData, id: invoiceId as number };
+                const finalItems: InvoiceItem[] = [];
 
                 for (const item of items) {
-                    await db.invoiceItems.add({
+                    const itemData: InvoiceItem = {
                         invoiceId: invoiceId as number,
                         productId: item.productId,
                         productName: item.name,
                         quantity: item.quantity,
                         priceAtSale: item.price
-                    });
+                    };
+                    await db.invoiceItems.add(itemData);
+                    finalItems.push(itemData);
 
                     // Deduct stock
                     const product = await db.products.get(item.productId);
@@ -117,14 +132,29 @@ export default function BillingPage() {
                         });
                     }
                 }
+
+                setCompletedInvoice(finalInvoice);
+                setCompletedItems(finalItems);
+                setIsSuccessOpen(true);
             });
 
             toast.success('Invoice generated successfully');
-            router.push('/sales');
         } catch (error) {
             toast.error('Failed to generate invoice');
             console.error(error);
         }
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const resetBilling = () => {
+        setItems([]);
+        setCustomerName('Walk-in Customer');
+        setIsSuccessOpen(false);
+        setCompletedInvoice(null);
+        setCompletedItems([]);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -146,7 +176,7 @@ export default function BillingPage() {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6 print:hidden">
                 <div className="bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden">
                     <div className="p-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -267,7 +297,7 @@ export default function BillingPage() {
                 </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 print:hidden">
                 <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6 space-y-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-zinc-800 pb-4">
                         Order Summary
@@ -287,7 +317,7 @@ export default function BillingPage() {
                             <span className="text-emerald-500">-₹0.00</span>
                         </div>
                         <div className="pt-4 border-t border-zinc-800 flex justify-between items-end">
-                            <span className="text-lg font-bold text-white">Net Amount</span>
+                            <span className="text-sm font-bold uppercase tracking-widest">Net Amount</span>
                             <span className="text-3xl font-black text-blue-500">₹{totals.total.toFixed(2)}</span>
                         </div>
                     </div>
@@ -317,6 +347,57 @@ export default function BillingPage() {
                     </ul>
                 </div>
             </div>
+
+            {/* Success & Print Modal */}
+            <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
+                <DialogContent className="bg-zinc-950 border-zinc-800 text-white sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-emerald-500">
+                            <CheckCircle2 className="w-6 h-6" />
+                            Invoice Generated!
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center py-6 space-y-6">
+                        <div className="text-center">
+                            <p className="text-zinc-400">Invoice <span className="text-white font-mono">#{completedInvoice?.invoiceNumber}</span> has been saved successfully.</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 w-full px-6">
+                            <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white h-12" onClick={resetBilling}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                New Bill
+                            </Button>
+                            <Button className="bg-blue-600 hover:bg-blue-700 h-12 text-white font-bold" onClick={handlePrint}>
+                                <Printer className="w-4 h-4 mr-2" />
+                                Print Invoice
+                            </Button>
+                        </div>
+
+                        {/* Hidden preview for printing */}
+                        <div className="hidden">
+                            {completedInvoice && (
+                                <InvoicePrint
+                                    profile={profile}
+                                    invoice={completedInvoice}
+                                    items={completedItems}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Offline Background Printable (Always present for window.print()) */}
+            <div className="fixed inset-0 bg-white z-[9999] hidden print:block overflow-auto">
+                {completedInvoice && (
+                    <InvoicePrint
+                        profile={profile}
+                        invoice={completedInvoice}
+                        items={completedItems}
+                    />
+                )}
+            </div>
         </div>
     );
+
 }

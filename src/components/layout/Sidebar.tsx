@@ -66,6 +66,14 @@ export function Sidebar() {
                         </div>
                     </div>
                 </div>
+                <div className="mt-4 text-center">
+                    <p className="text-[10px] text-zinc-600 font-medium tracking-tight">
+                        Designed & Developed by
+                    </p>
+                    <p className="text-[11px] text-blue-500/80 font-bold uppercase tracking-widest mt-0.5">
+                        Quadrax Solutions
+                    </p>
+                </div>
             </div>
         </aside>
     );

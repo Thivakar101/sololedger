@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
+import { db, Invoice, InvoiceItem } from '@/lib/db';
 import {
     Table,
     TableBody,
@@ -11,24 +12,42 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, FileText, Calendar, User } from 'lucide-react';
+import { IndianRupee, FileText, Calendar, User, Printer } from 'lucide-react';
 import { useShortcuts } from '@/hooks/use-shortcuts';
+import { Button } from '@/components/ui/button';
+import { useAppContext } from '@/context/AppContext';
+import { InvoicePrint } from '@/components/InvoicePrint';
 
 export default function SalesPage() {
     useShortcuts();
+    const { profile } = useAppContext();
+    const [printingInvoice, setPrintingInvoice] = useState<Invoice | null>(null);
+    const [printingItems, setPrintingItems] = useState<InvoiceItem[]>([]);
 
     const invoices = useLiveQuery(
         () => db.invoices.orderBy('date').reverse().toArray()
     );
 
+    const handlePrintRequest = async (invoice: Invoice) => {
+        if (!invoice.id) return;
+        const items = await db.invoiceItems.where('invoiceId').equals(invoice.id).toArray();
+        setPrintingInvoice(invoice);
+        setPrintingItems(items);
+
+        // Wait for state to update and print
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
+
     return (
         <div className="space-y-6">
-            <div>
+            <div className="print:hidden">
                 <h2 className="text-3xl font-bold tracking-tight text-white">Sales History</h2>
                 <p className="text-zinc-500 text-sm">View and track all and past invoices.</p>
             </div>
 
-            <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950">
+            <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 print:hidden">
                 <Table>
                     <TableHeader className="bg-zinc-900/50">
                         <TableRow className="border-zinc-800">
@@ -37,18 +56,19 @@ export default function SalesPage() {
                             <TableHead className="text-zinc-400">Customer</TableHead>
                             <TableHead className="text-zinc-400">Status</TableHead>
                             <TableHead className="text-zinc-400 text-right">Amount</TableHead>
+                            <TableHead className="text-zinc-400 text-right w-24">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {!invoices || invoices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-64 text-center text-zinc-500 italic">
+                                <TableCell colSpan={6} className="h-64 text-center text-zinc-500 italic">
                                     No sales history found. Start billing to see invoices here.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             invoices.map((invoice) => (
-                                <TableRow key={invoice.id} className="border-zinc-800 hover:bg-zinc-900/50 transition-colors group cursor-pointer">
+                                <TableRow key={invoice.id} className="border-zinc-800 hover:bg-zinc-900/50 transition-colors group">
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center border border-zinc-800">
@@ -80,11 +100,33 @@ export default function SalesPage() {
                                             <span>{invoice.totalAmount.toFixed(2)}</span>
                                         </div>
                                     </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 text-zinc-500 hover:text-white"
+                                            onClick={() => handlePrintRequest(invoice)}
+                                        >
+                                            <Printer className="w-4 h-4 mr-2" />
+                                            Print
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))
                         )}
                     </TableBody>
                 </Table>
+            </div>
+
+            {/* Offline Background Printable */}
+            <div className="fixed inset-0 bg-white z-[9999] hidden print:block overflow-auto">
+                {printingInvoice && (
+                    <InvoicePrint
+                        profile={profile}
+                        invoice={printingInvoice}
+                        items={printingItems}
+                    />
+                )}
             </div>
         </div>
     );
