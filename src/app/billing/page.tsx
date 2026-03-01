@@ -1,5 +1,5 @@
-'use client';
 
+'use client';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { db, Product } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
